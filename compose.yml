@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  gpt-test:
+    build: .
+    volumes:
+      - ./:/app
+    working_dir: /app
+    environment:
+      OPEN_AI_KEY: ${OPEN_AI_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      CUSTOM_SEARCH_ENGINE_ID: ${CUSTOM_SEARCH_ENGINE_ID}
+    command: bash
