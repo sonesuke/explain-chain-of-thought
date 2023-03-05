@@ -2,8 +2,9 @@ import openai
 import os
 import requests
 from bs4 import BeautifulSoup
+from googleapiclient.discovery import build
 
-# Set up OpenAI API key
+
 OPEN_AI_KEY = os.environ["OPEN_AI_KEY"]
 GOOGLE_API_KEY = os.environ["GOOGLE_API_KEY"]
 CUSTOM_SEARCH_ENGINE_ID = os.environ["CUSTOM_SEARCH_ENGINE_ID"]
@@ -23,34 +24,31 @@ template = """
 """
 prompt = template.format(query=query)
 
+# 検索キーワードをどうしたら良いかChatGPTに聞く
 completion = openai.ChatCompletion.create(
     model="gpt-3.5-turbo",
     messages=[
     {"role": "user", "content": prompt}])
 answer = completion.choices[0].message.content
-print(answer)
+print("1つめの問いに対する答え:\n" + answer)
 
-
+# ググる
 keywords = answer.split(",")
-
-from googleapiclient.discovery import build
-
 service = build("customsearch", "v1", developerKey=GOOGLE_API_KEY)
-
 result = service.cse().list(
      q= " ".join(keywords),
      cx=CUSTOM_SEARCH_ENGINE_ID,
-     lr='lang_ja',
-     num=3,
-     start=1
+     lr='lang_ja', # 日本語で
+     num=3, # とりあえず 3 ウェブサイト
+     start=1 # 検索結果1ページ目
      ).execute()
 
 
 answers = []
 for item in result["items"]:
-    print(item["title"])
     url = item["link"]
 
+    # ヒットしたURLをスクレイピングします
     response = requests.get(url)
     soup = BeautifulSoup(response.text, "html.parser")
     body = soup.body # body要素の取得
@@ -72,13 +70,13 @@ for item in result["items"]:
     """
     prompt = template.format(context=text[:2000], query=query)
 
+    # スクレイピングした情報を与えて関係ある情報を集める
     completion = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[
         {"role": "user", "content": prompt}])
     answer = completion.choices[0].message.content
-    print(answer)
-
+    print("2つめの問いに対する答え:\n" + answer)
     answers.append(answer)
 
 
@@ -92,11 +90,11 @@ template = """
 {query}
 """
 prompt = template.format(context="\n".join(answers), query=query)
-print(prompt)
 
+# 集めた情報をコンテキストとして渡して最終の答えを出させる。
 completion = openai.ChatCompletion.create(
     model="gpt-3.5-turbo",
     messages=[
     {"role": "user", "content": prompt}])
 answer = completion.choices[0].message.content
-print(answer)
+print("最終の答え:\n" + answer)
